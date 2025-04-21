@@ -114,6 +114,12 @@ Run the test suite:
 - Technical analysis: "What do the technical indicators show for Tesla stock?"
 - Market overview: "What's the current crypto market overview?"
 
+## Sample screenshots
+<img width="991" alt="Screenshot 2025-04-21 at 4 15 39 PM" src="https://github.com/user-attachments/assets/181d03c1-f5c3-467d-bfe1-556d7f100380" />
+<br>
+<img width="788" alt="Screenshot 2025-04-21 at 4 16 40 PM" src="https://github.com/user-attachments/assets/290a9396-52d6-4f46-a612-9ddf06ad2ec9" />
+
+
 ## Disclaimer
 
 This financial analysis tool is for informational purposes only and should not be considered financial advice. Always conduct your own research and consider consulting with a financial advisor before making investment decisions. Cryptocurrency investments are especially high-risk and speculative.
