@@ -25,3 +25,7 @@ tradingview-ta>=3.3.0
 # Optional - Recommended
 matplotlib>=3.7.0
 scikit-learn>=1.0.2 
+
+# Testing - Optional
+pytest>=7.4.0
+pytest-mock>=3.14.0

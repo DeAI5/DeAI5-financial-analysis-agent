@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import sys
 import json
+from werkzeug.exceptions import BadRequest
 
 # Add the parent directory to sys.path to import the agent
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -53,8 +54,11 @@ app.json_encoder = CustomJSONEncoder
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
-        data = request.json
-        
+        try:
+            data = request.json
+        except BadRequest:
+            return jsonify({"error": "Invalid JSON payload"}), 400
+
         if not data or 'messages' not in data:
             return jsonify({"error": "Invalid request. 'messages' is required"}), 400
             
@@ -101,4 +105,4 @@ def chat():
 
 if __name__ == '__main__':
     print("Starting Financial Agent API server on http://localhost:5000")
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    app.run(host='0.0.0.0', port=5000, debug=True)
