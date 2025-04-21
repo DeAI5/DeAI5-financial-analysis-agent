@@ -138,7 +138,8 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="flex flex-col h-screen bg-gray-50">
+      <main className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      {/* <main className="flex flex-col h-screen bg-gray-50"> */}
         <header className="bg-blue-600 p-4 text-white">
           <h1 className="text-2xl font-bold text-center">Financial AI Assistant</h1>
         </header>
@@ -162,7 +163,7 @@ export default function Home() {
               <div
                 key={index}
                 className={`p-4 rounded-lg ${
-                  message.role === 'user' ? 'bg-blue-100 ml-auto max-w-[80%]' : 'bg-white border border-gray-200 mr-auto max-w-[80%]'
+                  message.role === 'user' ? 'bg-blue-100 ml-auto max-w-[80%] dark:bg-blue-200' : 'bg-white border border-gray-200 mr-auto max-w-[80%] dark:bg-gray-800 dark:border-gray-600 dark:text-white'
                 }`}
               >
                 <div className="prose">
@@ -189,12 +190,12 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <form onSubmit={handleSubmit} className="flex space-x-2">
             <button
               type="button"
               onClick={clearChat}
-              className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-black dark:text-white"
               title="Clear chat"
             >
               <FiRefreshCw />
@@ -204,12 +205,18 @@ export default function Home() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about stocks, crypto, or investment advice..."
-              className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 p-2 border rounded-lg 
+                 bg-white text-black placeholder-gray-500 
+                 dark:bg-gray-900 dark:text-white dark:placeholder-gray-400 
+                 border-gray-300 dark:border-gray-600 
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
             />
             <button
               type="submit"
-              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300"
+              className="bg-blue-600 text-white p-2 rounded-lg 
+                 hover:bg-blue-700 transition-colors 
+                 disabled:bg-blue-300 dark:disabled:bg-blue-800"
               disabled={isLoading || !input.trim()}
             >
               <FiSend />
