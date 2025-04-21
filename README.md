@@ -87,6 +87,13 @@ A powerful financial assistant that provides comprehensive analysis for stocks a
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+### Testing
+
+Run the test suite:
+   ```bash
+   pytest test_app.py
+   ```
+
 ## Usage
 
 ### Available Features
@@ -113,4 +120,4 @@ This financial analysis tool is for informational purposes only and should not b
 
 ## License
 
-MIT 
+MIT
