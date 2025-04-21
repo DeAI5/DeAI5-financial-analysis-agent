@@ -163,10 +163,10 @@ export default function Home() {
               <div
                 key={index}
                 className={`p-4 rounded-lg ${
-                  message.role === 'user' ? 'bg-blue-100 ml-auto max-w-[80%] dark:bg-blue-200' : 'bg-white border border-gray-200 mr-auto max-w-[80%] dark:bg-gray-800 dark:border-gray-600 dark:text-white'
+                  message.role === 'user' ? 'bg-blue-100 ml-auto max-w-[80%] dark:bg-blue-950' : 'bg-white border border-gray-200 mr-auto max-w-[80%] dark:bg-gray-800 dark:border-gray-600 dark:text-white'
                 }`}
               >
-                <div className="prose">
+                <div className="prose dark:prose-invert">
                   {typeof message.content === 'string' ? (
                     <ReactMarkdown>
                       {message.content}
