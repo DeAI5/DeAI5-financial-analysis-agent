@@ -89,9 +89,16 @@ A powerful financial assistant that provides comprehensive analysis for stocks a
 
 ### Testing
 
-Run the test suite:
+Run the unit tests
+
    ```bash
-   pytest test_app.py
+   pytest -v backend/test_app.py -k "not integration"
+   ```
+
+Run the integration tests (**require the server to be running**)
+
+   ```bash
+   pytest -v backend/test_app.py -k "integration"
    ```
 
 ## Usage
