@@ -6,6 +6,9 @@ import { FiSend, FiRefreshCw } from 'react-icons/fi';
 interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  image_task_id?: string | null; // ID to trigger image generation fetch
+  image_url?: string | null; 
+  image_status?: 'idle' | 'fetching' | 'ready' | 'error'; // Status for image loading
 }
 
 // Define the response format from the LlamaIndex agent
@@ -35,6 +38,62 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // --- Effect to Fetch Generated Image --- 
+  useEffect(() => {
+    // Function to fetch the image for a specific message
+    const fetchGeneratedImage = async (messageIndex: number, taskId: string) => {
+      console.log(`[Task ${taskId.substring(0,6)}]: Fetching generated image via direct URL...`);
+      try {
+        // Fetch DIRECTLY from the backend image generation endpoint
+        const response = await fetch(`http://127.0.0.1:5000/api/generate_image/${taskId}`, { method: 'POST' }); 
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({})); 
+          console.error(`Image fetch failed for task ${taskId}: ${response.status}`, errorData);
+          setMessages(prev => prev.map((msg, index) => 
+            index === messageIndex ? { ...msg, image_status: 'error' } : msg
+          ));
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.image_url) {
+          console.log(`[Task ${taskId.substring(0,6)}]: Image received successfully.`);
+          setMessages(prev => prev.map((msg, index) => 
+            index === messageIndex ? { ...msg, image_status: 'ready', image_url: data.image_url } : msg
+          ));
+        } else {
+          console.error(`Image fetch for task ${taskId} succeeded but no image_url found.`);
+          setMessages(prev => prev.map((msg, index) => 
+            index === messageIndex ? { ...msg, image_status: 'error' } : msg
+          ));
+        }
+      } catch (error) {
+        console.error("Error fetching generated image:", error);
+        setMessages(prev => prev.map((msg, index) => 
+          index === messageIndex ? { ...msg, image_status: 'error' } : msg
+        ));
+      }
+    };
+
+    // Find the latest assistant message that needs its image fetched
+    const messageToFetch = messages.findLast((msg) => 
+        msg.role === 'assistant' && msg.image_task_id && msg.image_status === 'fetching'
+    );
+
+    if (messageToFetch) {
+       const messageIndex = messages.lastIndexOf(messageToFetch); 
+       // Add a small delay before fetching image to ensure state update is processed
+       const timer = setTimeout(() => {
+            fetchGeneratedImage(messageIndex, messageToFetch.image_task_id!);
+       }, 50); // 50ms delay
+       return () => clearTimeout(timer); // Cleanup timeout if component/messages change before fetch
+    }
+
+  }, [messages]); 
+  // --- End Image Fetching Effect ---
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -71,7 +130,8 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
+      // Fetch directly from backend, bypassing the Next.js proxy
+      const response = await fetch('http://127.0.0.1:5000/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,34 +142,34 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        console.error(`Direct fetch failed with status: ${response.status}`);
+        throw new Error('Failed to get response from direct backend fetch');
       }
 
       const data = await response.json();
+      console.log("<<< Received direct data from API:", data);
+
+      // Extract text response and image task ID
       let responseContent = data.response;
-
-      // Handle different response formats
-      if (typeof responseContent === 'object' && responseContent !== null) {
-        // Check if it's an agent response object
-        const agentResponse = responseContent as AgentResponse;
-        if (agentResponse.response) {
-          responseContent = agentResponse.response;
-        }
-      }
-
-      // If it's still not a string, ensure it becomes one
-      responseContent = ensureString(responseContent);
+      let imageTaskId = data.image_task_id;
+      responseContent = ensureString(responseContent); // Make sure text is string
       
-      const assistantMessage = { 
+      const assistantMessage: Message = { 
         role: 'assistant', 
-        content: responseContent
-      } as Message;
+        content: responseContent,
+        image_task_id: imageTaskId, // Store the task ID
+        image_status: imageTaskId ? 'fetching' : 'idle', // Set status to fetching if ID exists
+        image_url: null // Reset image URL
+      }; 
       
+      console.log(">>> Adding assistant message (direct fetch):", assistantMessage); 
+
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error during direct fetch:', error);
       setMessages((prev) => [
         ...prev,
+        // Keep error message simple
         { role: 'assistant', content: 'Sorry, there was an error processing your request.' },
       ]);
     } finally {
@@ -166,7 +226,7 @@ export default function Home() {
                   message.role === 'user' ? 'bg-blue-100 ml-auto max-w-[80%] dark:bg-blue-950' : 'bg-white border border-gray-200 mr-auto max-w-[80%] dark:bg-gray-800 dark:border-gray-600 dark:text-white'
                 }`}
               >
-                <div className="prose dark:prose-invert">
+                <div className="prose dark:prose-invert max-w-none">
                   {typeof message.content === 'string' ? (
                     <ReactMarkdown>
                       {message.content}
@@ -175,6 +235,43 @@ export default function Home() {
                     <pre>{JSON.stringify(message.content, null, 2)}</pre>
                   )}
                 </div>
+                 {/* Add image rendering logic */} 
+                 {/* Show image if ready */}
+                 {message.role === 'assistant' && message.image_status === 'ready' && message.image_url && (
+                   <div className="mt-2">
+                     <img
+                       src={message.image_url}
+                       alt="Generated visualization"
+                       className="max-w-full h-auto rounded-lg border border-gray-300 dark:border-gray-600"
+                       onError={(e) => {
+                         const target = e.target as HTMLImageElement;
+                         target.onerror = null; 
+                         target.style.display = 'none'; 
+                         const errorMsg = document.createElement('p');
+                         errorMsg.textContent = 'Error loading image.';
+                         errorMsg.className = 'text-red-500 text-sm';
+                         target.parentNode?.insertBefore(errorMsg, target.nextSibling);
+                       }}
+                     />
+                   </div>
+                 )}
+                 {/* Show loading indicator while fetching */}
+                 {message.role === 'assistant' && message.image_status === 'fetching' && (
+                    <div className="mt-2 text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Generating image...
+                    </div>
+                 )}
+                  {/* Show error indicator */}
+                  {message.role === 'assistant' && message.image_status === 'error' && (
+                    <div className="mt-2 text-sm text-red-500">
+                      Failed to load image.
+                    </div>
+                  )}
+                 {/* End of image rendering logic */}
               </div>
             ))
           )}

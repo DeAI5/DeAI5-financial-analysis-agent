@@ -6,9 +6,13 @@ import os
 import sys
 import json
 from werkzeug.exceptions import BadRequest
+import uuid
+
+# Import the new image generator function
+from image_generator import generate_image_with_openai
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Add the parent directory to sys.path to import the agent
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,6 +31,11 @@ spec.loader.exec_module(agentic_rag)
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+
+# --- Globals for Image Task Data ---
+# Store data needed to generate the image later {task_id: {prompt_data}}
+image_tasks = {} 
+# --- End Globals ---
 
 # Initialize the financial agent
 logging.info("Initializing financial agent... (this may take a minute)")
@@ -94,15 +103,35 @@ def chat():
             response = financial_agent.chat(user_message)
             signal.alarm(0)  # Disable the alarm
             
-            if hasattr(response, 'response'):
+            # Extract Response Text for Logging/Prompting
+            response_text = ""
+            if hasattr(response, 'response') and isinstance(response.response, str):
                 response_text = response.response
-            elif isinstance(response, dict) and 'response' in response:
+            elif isinstance(response, dict) and 'response' in response and isinstance(response['response'], str):
                 response_text = response['response']
+            elif isinstance(response, str):
+                 response_text = response
             else:
-                response_text = str(response)
-                
+                 response_text = str(response) # Fallback
             logging.info(f"Response from financial agent: {response_text}")
-            return jsonify({"message": response_text})
+
+            # --- Prepare for Separate Image Generation Request ---
+            image_task_id = None
+            if response_text: # Only create task if there is text
+                image_task_id = str(uuid.uuid4())
+                # Store necessary data for the prompt, keyed by task ID
+                image_tasks[image_task_id] = {
+                    "user_query": user_message, 
+                    "agent_response": response_text
+                }
+                logging.info(f"Created image task {image_task_id[:6]} for later generation.")
+            # --- End Prepare ---
+
+            # Return the text response and task ID immediately
+            response_data = {"response": response_text, "image_task_id": image_task_id}
+            logging.info(f"<<< Returning initial response: {response_data}")
+            return jsonify(response_data) # Return text and ID
+
         except TimeoutException:
             logging.error("Financial agent took too long to respond")
             return jsonify({"error": "The financial agent took too long to respond"}), 504
@@ -123,6 +152,37 @@ def test():
 def handle_exception(e):
     logging.error(f"Unhandled exception: {str(e)}")
     return jsonify({"error": "An internal error occurred"}), 500
+
+# --- New Endpoint for Generating Image ---
+@app.route('/api/generate_image/<task_id>', methods=['POST']) # Use POST as it triggers an action
+def generate_image_endpoint(task_id):
+    logging.info(f"Received request to generate image for task {task_id[:6]}")
+    prompt_data = None
+    prompt_data = image_tasks.pop(task_id, None) # Get data and remove task
+
+    if prompt_data is None:
+        logging.warning(f"Image task {task_id[:6]} not found or already processed.")
+        return jsonify({"error": "Task not found or already processed"}), 404
+    
+    try:
+        # Construct the new prompt
+        prompt = f"Create a minimalist visualization of the key concept from this financial interaction. Do not include any text, numbers, or labels in the image.\n\nUser Query: {prompt_data['user_query']}\n\nAgent Response: {prompt_data['agent_response'][:500]}"
+        logging.info(f"Generating image for task {task_id[:6]} with prompt: {prompt[:100]}...")
+
+        # Call the OpenAI API (this will take time)
+        image_url = generate_image_with_openai(prompt)
+
+        if image_url:
+            logging.info(f"Successfully generated image for task {task_id[:6]}")
+            return jsonify({"image_url": image_url})
+        else:
+            logging.error(f"Image generation failed for task {task_id[:6]}")
+            return jsonify({"error": "Image generation failed"}), 500
+
+    except Exception as e:
+        logging.error(f"Error during image generation for task {task_id[:6]}: {e}")
+        return jsonify({"error": f"Image generation error: {e}"}), 500
+# --- End New Endpoint ---
 
 if __name__ == '__main__':
     logging.info("Starting Financial Agent API server on http://localhost:5000")
