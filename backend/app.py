@@ -184,13 +184,17 @@ def chat():
             return jsonify({"message": f"I encountered an error processing your request: {str(agent_error)}"}), 500
     
     except Exception as e:
-        logging.error(f"Error in chat endpoint: {str(e)}")
+        logging.error(f"Unhandled error in chat endpoint: {str(e)}")
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 @app.route('/api/test', methods=['GET'])
 def test():
     logging.info("Test endpoint hit")
     return jsonify({"message": "Backend is working"})
+
+@app.route('/health')
+def health_check():
+    return "Server is running", 200
 
 @app.errorhandler(Exception)
 def handle_exception(e):
