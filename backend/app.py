@@ -194,7 +194,7 @@ def test():
 
 @app.route('/health')
 def health_check():
-    return "Server is running", 200
+    return jsonify({"status": "Server is running"}), 200
 
 @app.errorhandler(Exception)
 def handle_exception(e):
